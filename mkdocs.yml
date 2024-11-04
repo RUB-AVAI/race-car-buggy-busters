@@ -4,6 +4,7 @@ nav:
   - Avai lab package: avai-lab-package.md
   - ROS2 test package: test_package.md
   - Requirements: requirements.md
+  - Architecture: architecture.md
   - Wiki: wiki.md
 theme:
   name: material
@@ -33,7 +34,11 @@ theme:
         primary: blue
         accent: white
 markdown_extensions:
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.tabbed:
       alternate_style: true
   - pymdownx.highlight:
@@ -49,6 +54,7 @@ markdown_extensions:
   - attr_list
 plugins:
   - search
+  - mermaid2
   - autorefs
   - mkdocstrings:
       enabled: true
