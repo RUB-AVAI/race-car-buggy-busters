@@ -54,7 +54,6 @@ markdown_extensions:
   - attr_list
 plugins:
   - search
-  - mermaid2
   - autorefs
   - mkdocstrings:
       enabled: true
