@@ -4,7 +4,7 @@ from sensor_msgs.msg import Image
 import cv2
 from cv_bridge import CvBridge
 from ultralytics import YOLO
-import os
+
 class YoloConeDetector(Node):
     """This node uses a trained yolo model to detect cones in images received by subscribing topics."""
     def __init__(self):
@@ -15,8 +15,6 @@ class YoloConeDetector(Node):
             self.image_callback,
             10)
         self.bridge = CvBridge()
-        #node_dir = os.path.dirname(os.path.realpath(__file__))
-        #model_path = os.path.join(node_dir, '../../runs/detect/train/weights/best.pt')
         self.model = YOLO('/home/myuser/Desktop/race-car-buggy-busters/race_car_ws/src/test_package/runs/detect/train/weights/best.pt')
         self.colors = {
             "yellow_cones": (0, 255, 255),  # Yellow
