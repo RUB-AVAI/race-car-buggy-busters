@@ -6,6 +6,7 @@ from cv_bridge import CvBridge
 from ultralytics import YOLO
 import os
 class YoloConeDetector(Node):
+    """This node uses a trained yolo model to detect cones in images received by subscribing topics."""
     def __init__(self):
         super().__init__('yolo_cone_detector')
         self.subscription = self.create_subscription(
@@ -33,6 +34,7 @@ class YoloConeDetector(Node):
 
 
     def camera_callback(self, msg):
+        """Outputs message information of a certain topic."""
         msg_str = f"""
         Header:
             Frame ID: {msg.header.frame_id}
@@ -70,6 +72,7 @@ class YoloConeDetector(Node):
         self.get_logger().info(msg_str)
     
     def image_callback(self, msg):
+        """Converts images to OpenCV and passes them to the yolo model."""
         try:
             cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
         except Exception as e:
@@ -83,12 +86,14 @@ class YoloConeDetector(Node):
         self.visualize_results(cv_image, results[0])
 
     def depth_image_callback(self, msg):
+        """Converts images to apporpriate format to extract depth of specific points."""
         try:
             self.current_depth_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='passthrough')
         except Exception as e:
             self.get_logger().error(f"Failed to convert depth image: {e}")
 
     def visualize_results(self, image, results):
+        """Visualizes the images after detecting and calculating depth information."""
         if self.current_depth_image is None:
             self.get_logger().warning("No depth image received yet.")
             return
