@@ -12,6 +12,7 @@ nav:
   - ROS2 Messages: 
     - Sensor data: sensor_data.md
     - Message fromats: message_formats.md
+  - ROS2 Parameters: parameters.md
   - Reports:
     - Report Dec 17th: report_17_12.md
 theme:

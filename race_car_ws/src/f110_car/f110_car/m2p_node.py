@@ -2,10 +2,13 @@
 import math
 import rclpy
 from rclpy.node import Node
+from rclpy.parameter import Parameter
+from rcl_interfaces.msg import SetParametersResult
+
 import numpy as np
 
 from avai_lab.utils import get_direction_vec, quat_to_rot_vec, rot_from_vec
-from avai_lab.config import load_config
+# from avai_lab.config import load_config
 
 from ackermann_msgs.msg import AckermannDriveStamped
 from nav_msgs.msg import Odometry
@@ -17,19 +20,26 @@ class M2P(Node):
     converts them to Twist msgs which are published to the "/cmd_vel" topic.
     """
     def __init__(self):
-        super().__init__("AckermannToTwist") # "NodeName" will be displayed in rqt_graph
+        super().__init__("m2p_node") # "NodeName" will be displayed in rqt_graph
         self.odom_subscriber = self.create_subscription(Odometry, "/odom",
                                                          self.odom_callback, 10)
         self.point_subscriber = self.create_subscription(PoseStamped, "/target_points",
                                                          self.point_callback, 100)
         self.publisher = self.create_publisher(AckermannDriveStamped, "/drive", 10)
 
-        self.config = load_config()
-        self.get_logger().info(f"Used config:\n{str(self.config)}")
-        self.max_steering_angle = self.config.car_platform.max_steering_angle # radians
-        self.max_speed = self.config.car_platform.max_speed # m/s
-        self.max_acceleration = self.config.car_platform.max_acceleration # m/s
-        self.max_steering = self.config.car_platform.max_steering_angle # radians/s
+        self.declare_parameter('max_steering_angle', 0.5) # radians
+        self.declare_parameter('max_speed', 0.5) # m/s
+        self.declare_parameter('max_acceleration', 0.25) # m/s²
+        self.declare_parameter('max_steering', 0.5) # radians/s
+
+        # self.config = load_config()
+        # self.get_logger().info(f"Used config:\n{str(self.config)}")
+        self.max_steering_angle = self.get_parameter('max_steering_angle').value # radians
+        self.max_speed = self.get_parameter('max_speed').value  # m/s
+        self.max_acceleration = self.get_parameter('max_acceleration').value  # m/s²
+        self.max_steering = self.get_parameter('max_steering').value # radians/s
+        
+        self.add_on_set_parameters_callback(self.param_callback)
 
         self.target_stack = [] # Stack to hold upcoming target points
         self.current_target = None # Current target point
@@ -40,6 +50,21 @@ class M2P(Node):
         Normalize an angle to the range [-pi, pi].
         """
         return math.remainder(angle, 2*math.pi)
+
+    def param_callback(self, params: Parameter):
+        """
+        Callback to handle parameter updates.
+        """
+        for param in params:
+            if param.name == 'max_steering_angle':
+                self.max_steering_angle = param.value
+            elif param.name == 'max_speed':
+                self.max_speed = param.value
+            elif param.name == 'max_acceleration':
+                self.max_acceleration = param.value
+            elif param.name == 'max_steering':
+                self.max_steering = param.value
+        return SetParametersResult(successful=True)
 
     def point_callback(self, point_msg: PoseStamped):
         """
