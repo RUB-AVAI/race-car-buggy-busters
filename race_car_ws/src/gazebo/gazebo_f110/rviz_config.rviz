@@ -8,6 +8,8 @@ Panels:
         - /LaserScan1/Topic1
         - /RobotModel1/Description Topic1
         - /MarkerArray1
+        - /Marker1
+        - /Marker1/Status1
       Splitter Ratio: 0.5
     Tree Height: 549
   - Class: rviz_common/Selection
@@ -223,6 +225,19 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /semantic_grid_cluster_markers
       Value: true
+    - Class: rviz_default_plugins/Marker
+      Enabled: true
+      Name: Marker
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /target_point_marker
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -276,18 +291,18 @@ Visualization Manager:
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -0.8435853123664856
-        Y: -3.716188669204712
+        X: 0.9624539017677307
+        Y: -2.459855556488037
         Z: -0.8346220850944519
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.8303981423377991
+      Pitch: 0.6453983187675476
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 2.118582010269165
+      Yaw: 2.418583869934082
     Saved: ~
 Window Geometry:
   Displays:
@@ -305,5 +320,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1200
-  X: 470
-  Y: 119
+  X: 645
+  Y: 123

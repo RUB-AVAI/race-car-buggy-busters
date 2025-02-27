@@ -28,3 +28,11 @@ def rot_from_vec(v: np.ndarray):
     if rad < 0:
         rad += 2 * np.pi
     return rad
+
+def is_right(a: np.ndarray, b: np.ndarray, c: np.ndarray):
+    """
+    Note that the line is directional!
+    If the line goes from b to a, the answer will be the inverse of the
+    line going from a to b.
+    """
+    return ((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])) < 0

@@ -140,7 +140,7 @@
     </plugin>
 </gui>
 
-        <physics name="10ms" type="ignored">
+        <physics name="50ms" type="ignored">
             <max_step_size>0.05</max_step_size>
             <real_time_factor>2.0</real_time_factor>
         </physics>
@@ -159,7 +159,7 @@
             <direction>-0.5 0.1 -0.9</direction>
         </light>
             <include>
-                <name>f110_car</name>
+                <name>base_link</name>
                 <uri>model://car/f110_car.sdf</uri>
                 <pose>0 0 0.2 0 0 0</pose>
             </include>

@@ -2,7 +2,7 @@ import math
 
 import numpy as np
 from shapely.ops import polygonize
-from shapely.geometry import MultiLineString
+from shapely.geometry import MultiLineString, Polygon
 from shapely import unary_union, affinity
 from scipy.spatial import Delaunay
 
@@ -121,19 +121,30 @@ def resample_polygon(xy: np.ndarray, n_points: int = 100) -> np.ndarray:
     return xy_interp
 
 def generate_track(n: int, size_x: float=10, size_y: float=10, track_width: int=1, 
-                   refinements: int=2, alpha: int=1, n_points: int=100):
+                   refinements: int=2, alpha: int=1, n_points: int=100, dents: int=0,
+                   intensity: float=0.5):
     """Generate a track based on the convex hull of a normal distribution"""
     assert n >= 4, "The minimum number of points to generate a track is 4"
+    assert intensity <= 1 and intensity >= 0, "Intensity must be from the interval [0, 1]"
     X = np.random.normal(size=(n, 2))
     outlier_idx = np.abs(X) > 1
     valid_indices = np.where(~outlier_idx)[0]
     X = X[valid_indices]
     concave_hull, _ = alpha_shape(X, alpha=alpha)
-    track_inner = affinity.scale(concave_hull.normalize().buffer(1).normalize(), size_x, size_y)
+    # Add dents for stronger turns
+    dented_hull = np.array(concave_hull.exterior.coords)
+    assert dents <= len(dented_hull) / 2, "Shrinking more than every second point would result in a scaling operation"
+    dent_multiplier = 1 - intensity
+    for i in range(0, len(dented_hull), len(dented_hull) // (dents + 1)):
+        dented_hull[i] *= dent_multiplier
+
+    track_inner = affinity.scale(Polygon(dented_hull).normalize(), size_x, size_y).buffer(1)
     track_middle = track_inner.buffer(track_width / 2, join_style="mitre")
     track_outer = track_inner.buffer(track_width, join_style="mitre")
 
     track_ref_inner = chaikins_corner_cutting(np.array(track_inner.exterior.coords), refinements=refinements)
     track_ref_middle = chaikins_corner_cutting(np.array(track_middle.exterior.coords), refinements=refinements)
     track_ref_outer = chaikins_corner_cutting(np.array(track_outer.exterior.coords), refinements=refinements)
-    return resample_polygon(track_ref_inner, n_points), resample_polygon(track_ref_middle, n_points), resample_polygon(track_ref_outer, n_points)
+    return (resample_polygon(track_ref_inner, n_points), 
+            resample_polygon(track_ref_middle, n_points), 
+            resample_polygon(track_ref_outer, n_points))
