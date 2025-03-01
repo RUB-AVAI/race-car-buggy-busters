@@ -5,6 +5,9 @@ from rclpy.node import Node
 
 import numpy as np
 import numpy.typing as npt
+
+import math
+
 from scipy.ndimage import label
 from scipy.spatial.transform import Rotation
 
@@ -26,6 +29,7 @@ class ExplorationNode(Node):
         self.declare_parameter("map_pose_topic", "/pose")
         self.declare_parameter("semantic_grid_topic", "/semantic_map")
         self.declare_parameter("target_point_topic", "/target_point")
+        # self.declare_parameter("track_polygon_topic", "/track_polygon")
         self.declare_parameter("projection_point_distance", 2)
 
         self.map_pose_subscriber = self.create_subscription(PoseWithCovarianceStamped, self.get_parameter("map_pose_topic").value,
@@ -33,6 +37,7 @@ class ExplorationNode(Node):
         self.semantic_grid_subscriber = self.create_subscription(SemanticGrid, self.get_parameter("semantic_grid_topic").value, 
                                                                  self.semantic_grid_callback, 10)
         self.target_point_publisher = self.create_publisher(PoseStamped, self.get_parameter("target_point_topic").value, 10)
+        # self.track_polygon_topic = self.create_publisher()
         self.forward_unit_vec = [1, 0, 0] # TODO: This will be wrong in the ROS2 coordinate system
         self.start_point = None
         self.last_pose = None
@@ -40,6 +45,7 @@ class ExplorationNode(Node):
         self.start_zone_left = False
         self.start_zone_reentered = False
         self.track_calculation = False
+        self.track_polygon = None
 
     def pose_callback(self, msg: PoseWithCovarianceStamped):
         current_point = np.array([msg.pose.pose.point.x, msg.pose.pose.point.y])
@@ -133,7 +139,17 @@ class ExplorationNode(Node):
         ]
         return xy_interp
 
-    def calculate_track_polygon(self, cone_positions: np.ndarray):
+    def sort_points(self, points: np.ndarray) -> np.ndarray:
+        """
+        Calculates the centroid of the points and sorts them by polar angle
+        """
+        # calculate centroid
+        centroid = (sum([point[0] for point in points]) / len(points), sum([point[1] for point in points] / len(points)))
+        # sort by polar angle
+        points.sort(key = lambda point: math.atan2(point[1] - centroid[1], point[0] - centroid [0]))
+        return points
+
+    def calculate_track_polygon(self, cone_positions: np.ndarray) -> Polygon:
         track_points = np.array(self.exploration_points)
         # needs parameter tuning for number of samples!
         track_samples = self.resample_polygon(track_points)
@@ -147,9 +163,9 @@ class ExplorationNode(Node):
                 inner_cones.append(pos)
             else:
                 outer_cones.append(pos)
-        # todo: check wheter points need to be sorted
-        # if not: polygon(outer_cones, inner_cones)
-        # if yes: do some alpha shape magic?
+        sorted_outer_cones = self.sort_points(np.array(outer_cones))
+        sorted_inner_cones = self.sort_points(np.array(inner_cones))
+        return Polygon(sorted_outer_cones, sorted_inner_cones)
         # add polygon to visualizer node?
         # initiate polygon publisher for global planning or calculate optimal track here?
 
@@ -202,7 +218,7 @@ class ExplorationNode(Node):
         # calculate the track polygon if starting point is reapproached
         if self.start_zone_reentered:
             self.target_point_publisher.publish(self.create_target_point_msg(self.start_point[0], self.start_point[1]))
-            self.calculate_track_polygon(cone_positions)
+            self.track_polygon = self.calculate_track_polygon(cone_positions)
             self.get_logger().info("Start zone reentered, start calculating track polygon")
             self.track_calculation = True
             return
