@@ -43,7 +43,7 @@ class ExplorationNode(Node):
         self.forward_unit_vec = [1, 0, 0] # TODO: This will be wrong in the ROS2 coordinate system
         self.start_point = None
         self.last_pose = None
-        self.exploration_points = None
+        self.exploration_points = []
         self.start_zone_left = False
         self.start_zone_reentered = False
         self.track_calculation = False
@@ -51,8 +51,11 @@ class ExplorationNode(Node):
         self.inner_cones = None
 
     def pose_callback(self, msg: PoseWithCovarianceStamped):
-        current_point = np.array([msg.pose.pose.point.x, msg.pose.pose.point.y])
-        if not self.start_point:
+        if msg is None:
+            self.get_logger().info("No pose received, skipping callback")
+            return
+        current_point = np.array([msg.pose.pose.position.x, msg.pose.pose.position.y])
+        if self.start_point is not None:
             self.start_point = current_point
         self.exploration_points.append(current_point)
         self.last_pose = msg
@@ -180,8 +183,6 @@ class ExplorationNode(Node):
         sorted_outer_cones = self.sort_points(np.array(outer_cones))
         sorted_inner_cones = self.sort_points(np.array(inner_cones))
         return sorted_outer_cones, sorted_inner_cones
-        # add polygon to visualizer node?
-        # initiate polygon publisher for global planning or calculate optimal track here?
 
 
     def semantic_grid_callback(self, msg: SemanticGrid):
