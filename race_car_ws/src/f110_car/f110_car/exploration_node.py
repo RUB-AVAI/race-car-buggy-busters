@@ -239,7 +239,7 @@ class ExplorationNode(Node):
             self.outer_cones, self.inner_cones = self.calculate_track_polygon(cone_positions)
             self.get_logger().info("Start zone reentered, start calculating track polygon")
             self.track_calculation = True
-            return
+            # return
         # calculate the distances between the projected point and all cone positions
         distances = np.linalg.norm(cone_positions - projected_point, axis=1)
         # get the sorting index by distance
