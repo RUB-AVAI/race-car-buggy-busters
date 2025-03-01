@@ -51,14 +51,14 @@ class ExplorationNode(Node):
         self.inner_cones = None
 
     def pose_callback(self, msg: PoseWithCovarianceStamped):
-        if msg is None:
+        self.last_pose = msg
+        current_point = self.get_projected_point()
+        if current_point is None:
             self.get_logger().info("No pose received, skipping callback")
             return
-        current_point = np.array([msg.pose.pose.position.x, msg.pose.pose.position.y])
-        if self.start_point is not None:
+        if self.start_point is None:
             self.start_point = current_point
         self.exploration_points.append(current_point)
-        self.last_pose = msg
         if (not self.start_zone_left) and (np.linalg.norm(utils.get_direction_vec(current_point, self.start_point)) > 0.5):
             self.start_zone_left = True
         elif self.start_zone_left and (np.linalg.norm(utils.get_direction_vec(current_point, self.start_point)) < 0.25):
