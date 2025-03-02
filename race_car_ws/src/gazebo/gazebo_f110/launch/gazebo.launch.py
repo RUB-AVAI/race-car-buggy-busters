@@ -85,7 +85,15 @@ def generate_launch_description():
         executable="transform_pose",
         name="transform_pose",
         parameters=[{'use_sim_time': True}],
-    )
+            )
+    track_polygon_node = Node(
+            package="f110_car",
+            namespace="f110",
+            executable="track_polygon_node",
+            name="track_polygon_node",
+            parameters=[{'use_sim_time': True}],
+            )
+
     rviz = Node(
             package="rviz2",
             namespace="rviz2",
@@ -232,6 +240,7 @@ def generate_launch_description():
         ackermann_to_twist_node,
         ros_gz_bridge_node,
         slam_launch,
+        track_polygon_node,
         rviz,
         robot_state_publisher,
         static_transform_publisher

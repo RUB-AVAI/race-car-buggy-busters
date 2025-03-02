@@ -6,17 +6,12 @@ from rclpy.node import Node
 import numpy as np
 import numpy.typing as npt
 
-import math
-
 from scipy.ndimage import label
 from scipy.spatial.transform import Rotation
 
-from shapely.geometry import Point
-from shapely.geometry.polygon import Polygon as Poly
-
 from avai_lab import enums, utils
 
-from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped, Polygon, Point32
+from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped
 from racecar_msgs.msg import SemanticGrid
 
 class ExplorationNode(Node):
@@ -29,8 +24,6 @@ class ExplorationNode(Node):
         self.declare_parameter("map_pose_topic", "/pose")
         self.declare_parameter("semantic_grid_topic", "/semantic_map")
         self.declare_parameter("target_point_topic", "/target_point")
-        self.declare_parameter("outer_cones_topic", "/outer_cones")
-        self.declare_parameter("inner_cones_topic", "/inner_cones")
         self.declare_parameter("projection_point_distance", 2)
 
         self.map_pose_subscriber = self.create_subscription(PoseWithCovarianceStamped, self.get_parameter("map_pose_topic").value,
@@ -38,31 +31,10 @@ class ExplorationNode(Node):
         self.semantic_grid_subscriber = self.create_subscription(SemanticGrid, self.get_parameter("semantic_grid_topic").value, 
                                                                  self.semantic_grid_callback, 10)
         self.target_point_publisher = self.create_publisher(PoseStamped, self.get_parameter("target_point_topic").value, 10)
-        self.outer_cones_publisher = self.create_publisher(Polygon, self.get_parameter("outer_cones_topic").value, 10)
-        self.inner_cones_publisher = self.create_publisher(Polygon, self.get_parameter("inner_cones_topic").value, 10)
         self.forward_unit_vec = [1, 0, 0] # TODO: This will be wrong in the ROS2 coordinate system
-        self.start_point = None
-        self.last_pose = None
-        self.exploration_points = []
-        self.start_zone_left = False
-        self.start_zone_reentered = False
-        self.track_calculation = False
-        self.outer_cones = None
-        self.inner_cones = None
 
     def pose_callback(self, msg: PoseWithCovarianceStamped):
         self.last_pose = msg
-        current_point = self.get_projected_point()
-        if current_point is None:
-            self.get_logger().info("No pose received, skipping callback")
-            return
-        if self.start_point is None:
-            self.start_point = current_point
-        self.exploration_points.append(current_point)
-        if (not self.start_zone_left) and (np.linalg.norm(utils.get_direction_vec(current_point, self.start_point)) > 0.5):
-            self.start_zone_left = True
-        elif self.start_zone_left and (np.linalg.norm(utils.get_direction_vec(current_point, self.start_point)) < 0.25):
-            self.start_zone_reentered = True
 
     @staticmethod
     def semantic_grid_to_np(grid: SemanticGrid) -> npt.NDArray:
@@ -103,17 +75,6 @@ class ExplorationNode(Node):
         msg.pose.position.x = x
         msg.pose.position.y = y
         return msg
-    
-    def create_polygon_msg(self, points: np.ndarray) -> Polygon:
-        msg = Polygon()
-        msg_points = []
-        for point in points:
-            msg_point = Point32()
-            msg_point.x = np.float32(point[0])
-            msg_point.y = np.float32(point[1])
-            msg_points.append(msg_point)
-        msg.points = msg_points
-        return msg
 
     def get_left_cone(self, cone_positions: npt.NDArray, labels: npt.NDArray, 
                        projected_point: npt.NDArray) -> npt.NDArray | None:
@@ -140,59 +101,7 @@ class ExplorationNode(Node):
                 return cone_pos
         return None
 
-    def resample_polygon(xy: np.ndarray, n_points: int = 100) -> np.ndarray:
-        # credit to Tankred: https://stackoverflow.com/questions/66833406/resample-polygon-coordinates-to-space-them-evenly
-        # Cumulative Euclidean distance between successive polygon points.
-        # This will be the "x" for interpolation
-        d = np.cumsum(np.r_[0, np.sqrt((np.diff(xy, axis=0) ** 2).sum(axis=1))])
-
-        # get linearly spaced points along the cumulative Euclidean distance
-        d_sampled = np.linspace(0, d.max(), n_points)
-
-        # interpolate x and y coordinates
-        xy_interp = np.c_[
-            np.interp(d_sampled, d, xy[:, 0]),
-            np.interp(d_sampled, d, xy[:, 1]),
-        ]
-        return xy_interp
-
-    def sort_points(self, points: np.ndarray) -> np.ndarray:
-        """
-        Calculates the centroid of the points and sorts them by polar angle
-        """
-        # calculate centroid
-        centroid = (sum([point[0] for point in points]) / len(points), sum([point[1] for point in points] / len(points)))
-        # sort by polar angle
-        points.sort(key = lambda point: math.atan2(point[1] - centroid[1], point[0] - centroid [0]))
-        return points
-
-    def calculate_track_polygon(self, cone_positions: np.ndarray):
-        track_points = np.array(self.exploration_points)
-        # needs parameter tuning for number of samples!
-        track_samples = self.resample_polygon(track_points)
-        sample_polygon = Polygon(track_samples)
-        # check and sort cone positions based on whether they are inside or outside the sample_polygon
-        outer_cones = []
-        inner_cones = []
-        for pos in cone_positions:
-            point = Point(pos[0], pos[1])
-            if sample_polygon.contains(point):
-                inner_cones.append(pos)
-            else:
-                outer_cones.append(pos)
-        sorted_outer_cones = self.sort_points(np.array(outer_cones))
-        sorted_inner_cones = self.sort_points(np.array(inner_cones))
-        return sorted_outer_cones, sorted_inner_cones
-
-
     def semantic_grid_callback(self, msg: SemanticGrid):
-        self.get_logger().info(f"Status: Start Zone left - {self.start_zone_left}, Start Zone reentered -{self.start_zone_reentered}, Track Calculation started - {self.track_calculation}")    
-        if self.track_calculation:
-            self.get_logger.info("Track polygon will be calculated, skipping semantic grid callback")
-            if self.outer_cones and self.inner_cones:
-                self.outer_cones_publisher.publish(self.create_polygon_msg(self.outer_cones))
-                self.inner_cones_publisher.publish(self.create_polygon_msg(self.inner_cones))
-            return
         if self.last_pose is None:
             self.get_logger().info("Pose not initialized, skipping semantic grid callback")
             return
@@ -234,13 +143,6 @@ class ExplorationNode(Node):
         if len(cone_positions) == 0:
             self.get_logger().info("No cones detected, skipping target point creation")
             return
-        # calculate the track polygon if starting point is reapproached
-        if self.start_zone_reentered:
-            self.target_point_publisher.publish(self.create_target_point_msg(self.start_point[0], self.start_point[1]))
-            self.outer_cones, self.inner_cones = self.calculate_track_polygon(cone_positions)
-            self.get_logger().info("Start zone reentered, start calculating track polygon")
-            self.track_calculation = True
-            # return
         # calculate the distances between the projected point and all cone positions
         distances = np.linalg.norm(cone_positions - projected_point, axis=1)
         # get the sorting index by distance
