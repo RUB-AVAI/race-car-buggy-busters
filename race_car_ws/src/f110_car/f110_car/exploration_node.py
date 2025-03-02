@@ -32,6 +32,7 @@ class ExplorationNode(Node):
                                                                  self.semantic_grid_callback, 10)
         self.target_point_publisher = self.create_publisher(PoseStamped, self.get_parameter("target_point_topic").value, 10)
         self.forward_unit_vec = [1, 0, 0] # TODO: This will be wrong in the ROS2 coordinate system
+        self.last_pose = None
 
     def pose_callback(self, msg: PoseWithCovarianceStamped):
         self.last_pose = msg
@@ -153,6 +154,7 @@ class ExplorationNode(Node):
         if right_cone_position is None:
             self.get_logger().info("Could not locate a yellow cone to the right of the vehicle")
             return
+        
         left_cone_position = self.get_left_cone(cone_positions[dist_sort_idx], sorted_labels, projected_point)
         if left_cone_position is None:
             self.get_logger().info("Could not locate a blue cone to the left of the vehicle")
