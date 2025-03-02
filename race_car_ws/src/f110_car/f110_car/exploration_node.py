@@ -186,6 +186,7 @@ class ExplorationNode(Node):
 
 
     def semantic_grid_callback(self, msg: SemanticGrid):
+        self.get_logger().info(f"Status: Start Zone left - {self.start_zone_left}, Start Zone reentered -{self.start_zone_reentered}, Track Calculation started - {self.track_calculation}")    
         if self.track_calculation:
             self.get_logger.info("Track polygon will be calculated, skipping semantic grid callback")
             if self.outer_cones and self.inner_cones:
