@@ -15,7 +15,7 @@ from shapely.geometry.polygon import Polygon as ShapelyPolygon
 
 from avai_lab import enums, utils
 
-from geometry_msgs.msg import PoseWithCovarianceStamped, Polygon, Point32
+from geometry_msgs.msg import PoseWithCovarianceStamped, PolygonStamped, Point32
 from racecar_msgs.msg import SemanticGrid
 
 class TrackPolygonNode(Node):
@@ -36,8 +36,8 @@ class TrackPolygonNode(Node):
                                                          self.pose_callback, 10)
         self.semantic_grid_subscriber = self.create_subscription(SemanticGrid, self.get_parameter("semantic_grid_topic").value, 
                                                                  self.semantic_grid_callback, 10)
-        self.outer_cones_publisher = self.create_publisher(Polygon, self.get_parameter("outer_cones_topic").value, 10)
-        self.inner_cones_publisher = self.create_publisher(Polygon, self.get_parameter("inner_cones_topic").value, 10)
+        self.outer_cones_publisher = self.create_publisher(PolygonStamped, self.get_parameter("outer_cones_topic").value, 10)
+        self.inner_cones_publisher = self.create_publisher(PolygonStamped, self.get_parameter("inner_cones_topic").value, 10)
 
         self.start_point = None
         self.exploration_points = []
@@ -83,8 +83,11 @@ class TrackPolygonNode(Node):
         elif self.start_zone_left and (np.linalg.norm(utils.get_direction_vec(current_point, self.start_point)) < 0.25):
             self.start_zone_reentered = True
 
-    def create_polygon_msg(self, points: np.ndarray) -> Polygon:
-        msg = Polygon()
+    def create_polygon_msg(self, points: np.ndarray) -> PolygonStamped:
+        msg = PolygonStamped()
+        t = self.get_clock().now()
+        msg.header.stamp = t.to_msg()
+        msg.header.frame_id = "map"
         msg_points = []
         for point in points:
             msg_point = Point32()
@@ -93,38 +96,26 @@ class TrackPolygonNode(Node):
             msg_points.append(msg_point)
         msg.points = msg_points
         return msg
-    
-    def resample_polygon(xy: np.ndarray, n_points: int = 100) -> np.ndarray:
-        # credit to Tankred: https://stackoverflow.com/questions/66833406/resample-polygon-coordinates-to-space-them-evenly
-        # Cumulative Euclidean distance between successive polygon points.
-        # This will be the "x" for interpolation
-        d = np.cumsum(np.r_[0, np.sqrt((np.diff(xy, axis=0) ** 2).sum(axis=1))])
-
-        # get linearly spaced points along the cumulative Euclidean distance
-        d_sampled = np.linspace(0, d.max(), n_points)
-
-        # interpolate x and y coordinates
-        xy_interp = np.c_[
-            np.interp(d_sampled, d, xy[:, 0]),
-            np.interp(d_sampled, d, xy[:, 1]),
-        ]
-        return xy_interp
 
     def sort_points(self, points: np.ndarray) -> np.ndarray:
         """
         Calculates the centroid of the points and sorts them by polar angle
         """
         # calculate centroid
-        centroid = (sum([point[0] for point in points]) / len(points), sum([point[1] for point in points] / len(points)))
+        sum_x = 0.0
+        sum_y = 0.0
+        for point in points:
+            sum_x += point[0]
+            sum_y += point[1]
+        
+        centroid = ((sum_x / len(points)), (sum_y / len(points)))
         # sort by polar angle
-        points.sort(key = lambda point: math.atan2(point[1] - centroid[1], point[0] - centroid [0]))
-        return points
+        point_list = points.tolist()
+        sorted_points = point_list.sort(key = lambda point: math.atan2(point[1] - centroid[1], point[0] - centroid [0]))
+        return sorted_points
 
     def calculate_track_polygon(self, cone_positions: np.ndarray):
-        track_points = np.array(self.exploration_points)
-        # needs parameter tuning for number of samples!
-        track_samples = self.resample_polygon(track_points)
-        sample_polygon = ShapelyPolygon(track_samples)
+        sample_polygon = ShapelyPolygon(self.exploration_points)
         # check and sort cone positions based on whether they are inside or outside the sample_polygon
         outer_cones = []
         inner_cones = []
@@ -137,6 +128,17 @@ class TrackPolygonNode(Node):
         sorted_outer_cones = self.sort_points(np.array(outer_cones))
         sorted_inner_cones = self.sort_points(np.array(inner_cones))
         return sorted_outer_cones, sorted_inner_cones
+
+    @staticmethod
+    def semantic_grid_to_np(grid: SemanticGrid) -> npt.NDArray:
+        width = grid.info.width
+        height = grid.info.height
+        labels = np.empty((height, width), dtype=int)
+        for i, cell in enumerate(grid.cells):
+            row = i // width
+            col = i % width
+            labels[row, col] = cell.label
+        return labels
     
     def semantic_grid_callback(self, msg: SemanticGrid):
         self.get_logger().info(f"Status: Start Zone left - {self.start_zone_left}, Start Zone reentered - {self.start_zone_reentered}, Track Calculation started - {self.track_calculation}")    
@@ -145,7 +147,7 @@ class TrackPolygonNode(Node):
             return
         
         if self.track_calculation:
-            self.get_logger.info("Track polygon will be calculated, skipping semantic grid callback")
+            self.get_logger().info("Track polygon will be calculated, skipping semantic grid callback")
             if self.outer_cones and self.inner_cones:
                 self.outer_cones_publisher.publish(self.create_polygon_msg(self.outer_cones))
                 self.inner_cones_publisher.publish(self.create_polygon_msg(self.inner_cones))
@@ -186,7 +188,6 @@ class TrackPolygonNode(Node):
                     cone_positions.append((centroid_x, centroid_y))
                     position_labels.append(cone_label)
             position_labels = np.array(position_labels)
-            projected_point = self.get_projected_point()
             cone_positions = np.array(cone_positions)
             if len(cone_positions) == 0:
                 self.get_logger().info("No cones detected, skipping target point creation")
