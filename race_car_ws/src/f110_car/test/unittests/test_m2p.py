@@ -47,9 +47,6 @@ def test_normalize_angle(mock_config):
     node.destroy_node()
     rclpy.shutdown()
 
-
-
-
 def test_point_callback(ros_node):
     """Test target point handling"""
     point_msg = PoseStamped()
@@ -57,12 +54,12 @@ def test_point_callback(ros_node):
     point_msg.pose.position.y = 2.0
 
     ros_node.point_callback(point_msg)
-    assert len(ros_node.target_stack) == 1
-    assert np.array_equal(ros_node.target_stack[0], np.array([1.0, 2.0]))
+    assert ros_node.target is not None
+    assert np.array_equal(ros_node.target, np.array([1.0, 2.0]))
 
+    # Call again with the same target, it should not change
     ros_node.point_callback(point_msg)
-    assert len(ros_node.target_stack) == 1 
-
+    assert np.array_equal(ros_node.target, np.array([1.0, 2.0]))
 
 @patch("avai_lab.utils.get_direction_vec", return_value=np.array([1, 1]))
 @patch("avai_lab.utils.quat_to_rot_vec", return_value=0.0)
@@ -75,7 +72,7 @@ def test_odom_callback(mock_get_dir, mock_quat_rot, mock_rot_vec, ros_node):
     odom_msg.pose.pose.orientation.z = 0.0
     odom_msg.pose.pose.orientation.w = 1.0
 
-    ros_node.target_stack.append(np.array([1.0, 1.0]))
+    ros_node.target.append(np.array([1.0, 1.0]))
     ros_node.publisher.publish = MagicMock()
     ros_node.odom_callback(odom_msg)
 
@@ -93,23 +90,22 @@ def test_drive_stopping(ros_node):
     odom_msg.pose.pose.position.x = 1.0
     odom_msg.pose.pose.position.y = 1.0
 
-    ros_node.target_stack.append(np.array([1.0, 1.0]))
-    ros_node.target_stack.append(np.array([2.0, 2.0]))  # another target
+    ros_node.target = np.array([1.0, 1.0])
 
     ros_node.publisher.publish = MagicMock()
 
-    ros_node.odom_callback(odom_msg) 
-    time.sleep(0.1)  
-    ros_node.odom_callback(odom_msg) 
+    ros_node.pose_callback(odom_msg)
+    time.sleep(0.1)
+    ros_node.pose_callback(odom_msg)
 
-    # Check if a new target was set
-    assert ros_node.current_target is not None, "The car did not switch to the next target"
+    assert ros_node.target is not None, "The car should have a target"
 
     if ros_node.publisher.publish.call_count > 0:
         published_msg = ros_node.publisher.publish.call_args[0][0]
         assert published_msg.drive.speed >= ros_node.min_speed
     else:
         pytest.fail("Expected AckermannDriveStamped message but none was published")
+
 
 
 
