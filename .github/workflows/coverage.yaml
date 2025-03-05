@@ -1,0 +1,40 @@
+on:
+    push:
+        branches:
+            - main
+    pull_request:
+        branches:
+            - main
+    workflow_dispatch:
+
+jobs:
+    test:
+        runs-on: ubuntu-latest
+        container:
+          image: ros:humble
+
+        steps:
+            - name: Check Out Repository
+              uses: actions/checkout@v4
+    
+            - name: Install Dependencies
+              run: |
+                apt-get update
+                apt-get install -y python3-pip
+                pip3 install --upgrade pip setuptools wheel packaging pytest coverage
+                pip3 install -e ./avai_lab
+        
+            - name: Build ROS 2 Packages
+              shell: bash
+              run: |
+                source /opt/ros/humble/setup.bash
+                cd race_car_ws
+                colcon build
+                cd ..
+
+            - name: Coverage Check
+              shell: bash
+              run: |
+                source race_car_ws/install/setup.bash
+                python3 -m coverage run -m pytest unit_tests/
+                python3 -m coverage report --fail-under=60

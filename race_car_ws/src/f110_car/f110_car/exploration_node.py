@@ -2,16 +2,18 @@
 from typing import List
 import rclpy
 from rclpy.node import Node
+from rcl_interfaces.msg import SetParametersResult
 
 import numpy as np
 import numpy.typing as npt
 from scipy.ndimage import label
 from scipy.spatial.transform import Rotation
 
-from avai_lab import enums, utils
+from avai_lab import enums, utils, msg_conversion
 
 from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped
 from racecar_msgs.msg import SemanticGrid
+from ackermann_msgs.msg import AckermannDriveStamped
 
 class ExplorationNode(Node):
     """
@@ -30,29 +32,35 @@ class ExplorationNode(Node):
         self.declare_parameter("map_pose_topic", "/pose")
         self.declare_parameter("semantic_grid_topic", "/semantic_map")
         self.declare_parameter("target_point_topic", "/target_point")
+        self.declare_parameter("drive_topic", "/drive")
         self.declare_parameter("projection_point_distance", 2)
+        self.declare_parameter("active", True)
 
         self.map_pose_subscriber = self.create_subscription(PoseWithCovarianceStamped, self.get_parameter("map_pose_topic").value,
                                                          self.pose_callback, 10)
         self.semantic_grid_subscriber = self.create_subscription(SemanticGrid, self.get_parameter("semantic_grid_topic").value, 
                                                                  self.semantic_grid_callback, 10)
+        self.drive_subscriber = self.create_subscription(AckermannDriveStamped, self.get_parameter("drive_topic").value, 
+                                                                 self.drive_topic_callback, 10)
         self.target_point_publisher = self.create_publisher(PoseStamped, self.get_parameter("target_point_topic").value, 10)
         self.forward_unit_vec = [1, 0, 0] # TODO: This will be wrong in the ROS2 coordinate system
         self.last_pose = None
+        self.current_steering_angle = 0
+        self.active = self.get_parameter("active").value
+        self.add_on_set_parameters_callback(self.param_callback)
+
+    def drive_topic_callback(self, msg: AckermannDriveStamped):
+        self.current_steering_angle = msg.drive.steering_angle
+
+    def param_callback(self, params):
+        for param in params:
+            if param.name == "active":
+                self.get_logger().info(f"Active status changed to: {param.value}")
+                self.active = param.value
+        return SetParametersResult(successful=True)
 
     def pose_callback(self, msg: PoseWithCovarianceStamped):
         self.last_pose = msg
-
-    @staticmethod
-    def semantic_grid_to_np(grid: SemanticGrid) -> npt.NDArray:
-        width = grid.info.width
-        height = grid.info.height
-        labels = np.empty((height, width), dtype=int)
-        for i, cell in enumerate(grid.cells):
-            row = i // width
-            col = i % width
-            labels[row, col] = cell.label
-        return labels
 
     def get_car_projection_vector(self) -> List:
         """Extract the current rotation from the last received pose message and create
@@ -60,6 +68,7 @@ class ExplorationNode(Node):
         """
         assert self.last_pose is not None, "Pose not initialized"
         rotation_radians = utils.quat_to_rot_vec(self.last_pose.pose.pose.orientation.z, self.last_pose.pose.pose.orientation.w)
+        #rotation_radians += self.current_steering_angle
         rotation_axis = np.array([0, 0, 1])
          
         rotation_vector = rotation_radians * rotation_axis
@@ -84,7 +93,7 @@ class ExplorationNode(Node):
         return msg
 
     def get_left_cone(self, cone_positions: npt.NDArray, labels: npt.NDArray, 
-                       projected_point: npt.NDArray) -> npt.NDArray | None:
+                      projected_point: npt.NDArray, distances: npt.NDArray) -> npt.NDArray | None:
         """Retrieve the closest blue cone that lies on the left side of the vehicle
         :param cone_positions: A 2D numpy array with the cones in the first dimension and the x,y coordinates in the
             second dimension
@@ -94,7 +103,9 @@ class ExplorationNode(Node):
         """
         assert len(cone_positions) == len(labels), "The amount of labels must equal the amount of cone positions"
         vehicle_location = np.array([self.last_pose.pose.pose.position.x, self.last_pose.pose.pose.position.y])
-        for cone_pos in cone_positions[labels == enums.BLUE_CONE]:
+        idx = labels == enums.BLUE_CONE
+        for cone_pos, distance in zip(cone_positions[idx], distances[idx]):
+            #cone_relative_car = cone_pos - vehicle_location
             if not utils.is_right(vehicle_location, projected_point, cone_pos):
                 return cone_pos
         
@@ -106,7 +117,7 @@ class ExplorationNode(Node):
 
 
     def get_right_cone(self, cone_positions: npt.NDArray, labels: npt.NDArray, 
-                       projected_point: npt.NDArray) -> npt.NDArray | None:
+                       projected_point: npt.NDArray, distances: npt.NDArray) -> npt.NDArray | None:
         """Retrieve the closest yellow cone that lies on the right side of the vehicle
         :param cone_positions: A 2D numpy array with the cones in the first dimension and the x,y coordinates in the
             second dimension
@@ -116,7 +127,9 @@ class ExplorationNode(Node):
         """
         assert len(cone_positions) == len(labels), "The amount of labels must equal the amount of cone positions"
         vehicle_location = np.array([self.last_pose.pose.pose.position.x, self.last_pose.pose.pose.position.y])
-        for cone_pos in cone_positions[labels == enums.YELLOW_CONE]:
+        idx = labels == enums.YELLOW_CONE
+        for cone_pos, distance in zip(cone_positions[idx], distances):
+            # check if the cone is in front of the vehicle
             if utils.is_right(vehicle_location, projected_point, cone_pos):
                 return cone_pos
         
@@ -129,10 +142,12 @@ class ExplorationNode(Node):
     def semantic_grid_callback(self, msg: SemanticGrid):
         """Convert the grid into a numpy array and calculate a new target point
         """
+        if not self.active:
+            return
         if self.last_pose is None:
             self.get_logger().info("Pose not initialized, skipping semantic grid callback")
             return
-        grid = self.semantic_grid_to_np(msg)
+        grid = msg_conversion.semantic_grid_to_np(msg)
         valid_labels = [
             enums.YELLOW_CONE,
             enums.BLUE_CONE,
@@ -175,13 +190,14 @@ class ExplorationNode(Node):
         # get the sorting index by distance
         dist_sort_idx = np.argsort(distances)
         sorted_labels = position_labels[dist_sort_idx]
+        sorted_distances = distances[dist_sort_idx]
         # Find the closest yellow cone that is to the right of the projection vector
-        right_cone_position = self.get_right_cone(cone_positions[dist_sort_idx], sorted_labels, projected_point)
+        right_cone_position = self.get_right_cone(cone_positions[dist_sort_idx], sorted_labels, projected_point, sorted_distances)
         if right_cone_position is None:
             self.get_logger().info("Could not locate a yellow cone to the right of the vehicle")
             return
 
-        left_cone_position = self.get_left_cone(cone_positions[dist_sort_idx], sorted_labels, projected_point)
+        left_cone_position = self.get_left_cone(cone_positions[dist_sort_idx], sorted_labels, projected_point, sorted_distances)
         if left_cone_position is None:
             self.get_logger().info("Could not locate a blue cone to the left of the vehicle")
             return

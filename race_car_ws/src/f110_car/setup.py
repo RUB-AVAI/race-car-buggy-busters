@@ -25,6 +25,7 @@ setup(
             "semantic_grid_vis = f110_car.semantic_grid_vis_node:main",
             "exploration_node = f110_car.exploration_node:main",
             "exploration_vis_node = f110_car.exploration_visualizer_node:main",
+            "global_planning_node = f110_car.global_planning_node:main",
         ],
     },
 )

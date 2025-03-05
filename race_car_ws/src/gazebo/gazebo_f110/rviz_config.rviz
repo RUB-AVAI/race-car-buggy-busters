@@ -9,7 +9,7 @@ Panels:
         - /RobotModel1/Description Topic1
         - /MarkerArray1
         - /Marker1
-        - /Marker1/Status1
+        - /Path1
       Splitter Ratio: 0.5
     Tree Height: 549
   - Class: rviz_common/Selection
@@ -66,9 +66,9 @@ Visualization Manager:
       Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
-      Max Intensity: -999999
+      Max Intensity: 0
       Min Color: 0; 0; 0
-      Min Intensity: 999999
+      Min Intensity: 0
       Name: LaserScan
       Position Transformer: XYZ
       Selectable: true
@@ -92,6 +92,8 @@ Visualization Manager:
         All Enabled: true
         base_link:
           Value: true
+        base_link/odom:
+          Value: true
         camera_link:
           Value: true
         gpu_lidar:
@@ -111,13 +113,15 @@ Visualization Manager:
       Show Names: true
       Tree:
         map:
-          odom:
+          base_link/odom:
             base_link:
               camera_link:
                 {}
               lidar_link:
                 gpu_lidar:
                   {}
+          odom:
+            {}
           scan:
             {}
       Update Interval: 0
@@ -217,7 +221,7 @@ Visualization Manager:
       Enabled: true
       Name: MarkerArray
       Namespaces:
-        {}
+        semantic_grid_clusters: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -237,6 +241,34 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /target_point_marker
+      Value: true
+    - Alpha: 1
+      Buffer Length: 1
+      Class: rviz_default_plugins/Path
+      Color: 25; 255; 0
+      Enabled: true
+      Head Diameter: 0.30000001192092896
+      Head Length: 0.20000000298023224
+      Length: 0.30000001192092896
+      Line Style: Lines
+      Line Width: 0.029999999329447746
+      Name: Path
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Pose Color: 255; 85; 255
+      Pose Style: None
+      Radius: 0.029999999329447746
+      Shaft Diameter: 0.10000000149011612
+      Shaft Length: 0.10000000149011612
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /path
       Value: true
   Enabled: true
   Global Options:
@@ -284,25 +316,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 14.465882301330566
+      Distance: 13.01359748840332
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.9624539017677307
-        Y: -2.459855556488037
-        Z: -0.8346220850944519
+        X: 1.433005690574646
+        Y: -3.733982563018799
+        Z: 0.7110385298728943
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.6453983187675476
+      Pitch: 0.650398313999176
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 2.418583869934082
+      Yaw: 2.4485843181610107
     Saved: ~
 Window Geometry:
   Displays:
@@ -320,5 +352,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1200
-  X: 645
-  Y: 123
+  X: 68
+  Y: 177

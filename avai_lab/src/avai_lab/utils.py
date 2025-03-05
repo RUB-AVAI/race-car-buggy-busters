@@ -1,3 +1,4 @@
+import numpy.typing as npt
 import numpy as np
 from scipy.spatial.transform import Rotation
 
@@ -35,4 +36,13 @@ def is_right(a: np.ndarray, b: np.ndarray, c: np.ndarray):
     If the line goes from b to a, the answer will be the inverse of the
     line going from a to b.
     """
-    return ((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])) < 0
+    return bool(((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])) < 0)
+
+def angle_between_three(a: npt.NDArray, b: npt.NDArray, c: npt.NDArray):
+    ba = a - b
+    bc = c - b
+
+    cosine_angle = np.dot(ba, bc) / (np.linalg.norm(ba) * np.linalg.norm(bc))
+    radians = np.arccos(cosine_angle)
+    return radians
+
