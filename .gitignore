@@ -217,3 +217,12 @@ cython_debug/
 # custom stuff
 install/
 log/
+
+# latex stuff
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.pdf
+*.synctex.gz

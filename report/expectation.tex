@@ -1,0 +1,224 @@
+The goal of the project is the development of an autonomous race car capable of completing at least one lap on an indoor track in a fast yet safe manner.
+The vehicle is positioned in the driving direction at the start. The race environment follows the F1TENTH cone system, where blue cones mark the left boundary, yellow cones mark the right boundary, and the start zone is identified by orange cones on both sides.
+The track is a closed-loop circuit without any branches, and its layout changes between races. The vehicle operates without other cars on the track, with a maximum speed of approximately 15 km/h. 
+A perception round precedes the timed lap. The system utilizes ROS2 Humble for software integration and runs on an NVIDIA Jetson NX 16GB. The vehicle is equipped with a 3D + mono depth camera (Intel RealSense Depth Camera D435i) and a high-resolution 2D LiDAR (Hokuyo UST-10), and features a four-wheel-drive system with Ackermann steering for navigation. \\
+\newline
+For this goal to be fulfilled, we assumed following elements to be given:
+\newline
+\begin{itemize}
+	\item \textbf{Working hard- \& software stack}: In order to work effectively on this project, we assume that the given hard- and software stack is working as intended. 
+	\item \textbf{Reliable WiFi connection to the car}: We need a reliable wireless connection to the car platform if we want to test it in the real world and also for the race. We assume that an SSH connection to the car with good data transfer speeds and little to none disconnections is possible.
+	\item \textbf{Guidance \& support for debugging \& working with ROS2 Humble}: As we are no professionals regarding working with ROS2 and as debugging with ROS2 can be a complex task, we assume that we receive some more professional help with working with and especially debugging in ROS2.
+\end{itemize}
+
+Based on these goals and assumptions, at the beginning of the lab course we came up with the following initial set of requirements for the race car.
+
+\subsection{Functional Requirements}
+
+The functional requirements describe what tasks the car should fulfil for driving autonomously. In the following table the main driving tasks (Perception, Localization, Mapping, Planning, and Control) are broken down into requirements fit to our project goals. Additionally, we introduced requirements for vehicle health and monitoring.
+
+\begin{center}
+	\begin{longtable}{ | m{2em} | m{10em} | m{16em} | m{8em} | }
+		\caption{Functional Requirements.} \label{tab:long}\\
+		
+		\hline \multicolumn{1}{|m{2em}|}{\textbf{ID}} & \multicolumn{1}{m{10em}|}{\textbf{Requirement Name}} & \multicolumn{1}{m{16em}|}{\textbf{Requirement}} & \multicolumn{1}{m{8em}|}{\textbf{Classification}} \\ \hline
+		\endfirsthead
+		
+		\multicolumn{4}{m{36em}}%
+		{{\bfseries \tablename\ \thetable{} -- continued from previous page}} \\
+		\hline \multicolumn{1}{|m{2em}|}{\textbf{ID}} & \multicolumn{1}{m{10em}|}{\textbf{Requirement Name}} & \multicolumn{1}{m{16em}|}{\textbf{Requirement}} & \multicolumn{1}{m{8em}|}{\textbf{Classification}} \\ \hline
+		\endhead
+		
+		\hline \multicolumn{4}{|m{36em}|}{Continued on next page} \\ \hline
+		\endfoot
+		
+		\hline \hline
+		\endlastfoot
+		
+		F01 & General Perception & The vehicle shall capture real-time 3D depth data using the Hokuyo UST-10 LiDAR and high-resolution visual data using the Intel RealSense Depth Camera D435i to perceive the environment. & Must have\\
+		\hline
+		F02 & Object Detection \& Classification & The system shall detect and classify blue cones marking the left track boundary and yellow cones marking the right track boundary in real-time. & Must have\\
+		\hline
+		F03 & Cone Detection & When on track, the vehicle shall detect cones marking the track boundaries in real-time using the camera and LiDAR sensors. & Must have\\
+		\hline
+		F04 & Sensor Fusion & When collecting data, the perception system shall integrate LiDAR and camera data using a sensor fusion algorithm to improve cone detection accuracy. & Must have\\
+		\hline
+		F05 & Distance Estimation & While driving, the vehicle shall estimate the distance to the track boundaries continuously. & Should have\\
+		\hline
+		F06 & Point Cloud & The vehicle shall collect 3D LiDAR point cloud data to detect and map its surroundings in real-time. & Must have\\
+		\hline
+		F07 & Visual Data & The camera system shall provide input for visual odometry and SLAM, ensuring accurate self-localization. & Should have\\
+		\hline
+		F08 & Self-Localization & The vehicle shall localize its position relative to track boundaries using fused data from LiDAR, camera, and odometry. & Must have\\
+		\hline
+		F09 & Real-Time Map & The vehicle shall generate a real-time map of the environment using LiDAR and visual sensors, aiding in cone detection and path planning. & Must have\\
+		\hline
+		F10 & Environments & The system shall be able to handle both static and dynamic environments, where the track layout may change. & Could have\\
+		\hline
+		F11 & Optimal Trajectory & When planning the path, the vehicle shall generate an optimal trajectory within track boundaries using the detected cone positions and real-time sensor data, maintaining the desired speed. & Should have\\
+		\hline
+		F12 & Path Planning & The vehicle shall implement a planning algorithm that works in real time, adjusting paths as the environment changes. & Could have\\
+		\hline
+		F13 & Path Updates & The path planner shall compute new trajectories dynamically to handle sudden track changes. & Could have\\
+		\hline
+		F14 & Acceleration \& Deceleration & The vehicle shall decide when to accelerate, decelerate, or stop, depending on the environment. & Should have\\
+		\hline
+		F15 & Driving Modes & The vehicle shall be able to switch between different driving modes (e.g., cruising, emergency stop) based on the context. & Should have\\
+		\hline
+		F16 & Speed Maintenance & The vehicle shall maintain the fastest appropriate speed for the calculated paths on the track layout, not exceeding 15 km/h. & Should have\\
+		\hline
+		F17 & Acceleration Adaptation & The system shall adapt acceleration to keep the vehicle within speed limits, adjusting for factors like road slope, friction, and other dynamic conditions. & Could have\\
+		\hline
+		F18 & Sharp Turns & While approaching sharp turns, the vehicle shall adjust its speed to ensure safe cornering without exceeding the track boundaries. & Should have\\
+		\hline
+		F19 & Smooth Acceleration & When accelerating, the vehicle must limit its acceleration to avoid jerky movements using a soft acceleration curve, ensuring smooth control. & Should have\\
+		\hline
+		F20 & Braking & The vehicle shall be able to brake in real-time to slow down or stop based on planned behavior or unexpected events. & Could have\\
+		\hline
+		F21 & Controlled Emergency Braking & When braking, the vehicle shall decelerate within a controlled distance to avoid overshooting turns or track boundaries. & Could have\\
+		\hline
+		F22 & Steering Angle & When controlling the steering, the vehicle shall calculate the optimal steering angle based on the track curvature and current speed. & Must have\\
+		\hline
+		F23 & Steering & The vehicle shall control the Ackerman steering system to follow the planned trajectory accurately. & Must have\\
+		\hline
+		F24 & Smooth Steering & The control system shall ensure stable and smooth steering, especially at high speeds. & Should have\\
+		\hline
+		F25 & External Signals & The system shall respond appropriately to external signals and traffic rules defined for the track. & Could have\\
+		\hline
+		F26 & Failsafe Mode & When a critical system failure is detected, the vehicle shall engage the emergency braking system to bring the vehicle to a stop. & Should have\\
+		\hline
+		F27 & System Health & When system health is checked, the vehicle shall monitor the status of all sensors, compute hardware, and actuators in real-time to ensure continuous operation. & Could have \\
+		\hline
+		F28 & Odometry & The vehicle shall collect odometry data to track its speed, orientation, and position over time. & Must have\\
+		\hline
+		F29 & Health Checks & The system shall implement watchdog timers and health-check nodes to detect failures or malfunctions in any part of the system. & Should have\\
+		\hline
+		F30 & Vehicle Tracking & The system shall provide continuous and real-time feedback on the vehicle's movement and position to maintain trajectory tracking. & Must have \\
+		\hline
+		F31 & Internal Communication & All sensors, actuators, and the onboard compute hardware shall communicate via ROS2 Humble, using DDS for real-time message passing. & Must have\\
+		\hline
+		F32 & Manual Override Mode & The system should be able to transition to a manual override mode in case of critical failures, allowing the race team to take control if necessary. & Should have\\
+		\hline
+		F33 & Partial System Failures & The system shall include multiple levels of safety checks, and emergency overrides shall be functional even in the event of partial system failures. & Should have\\
+		\hline
+		F34 & Testing & The vehicle shall be tested in both simulation and real-world environments to validate its perception, planning, and control systems. & Should have \\
+		\hline
+	\end{longtable}
+\end{center}
+
+\subsection{Quality Requirements}
+
+The quality requirements ensure that the car is working within its constraints as intended. Furthermore some quality requirements are requirements towards the hardware and some numerical values may differ in the end depending on average and maximum speeds achieved by the racecar in the final implementation.
+
+\begin{center}
+	\begin{longtable}{ | m{2em} | m{10em} | m{16em} | m{8em} | }
+		\caption{Quality Requirements.} \label{tab:long}\\
+		
+		\hline \multicolumn{1}{|m{2em}|}{\textbf{ID}} & \multicolumn{1}{m{10em}|}{\textbf{Requirement Name}} & \multicolumn{1}{m{16em}|}{\textbf{Requirement}} & \multicolumn{1}{m{8em}|}{\textbf{Classification}} \\ \hline
+		\endfirsthead
+		
+		\multicolumn{4}{m{36em}}%
+		{{\bfseries \tablename\ \thetable{} -- continued from previous page}} \\
+		\hline \multicolumn{1}{|m{2em}|}{\textbf{ID}} & \multicolumn{1}{m{10em}|}{\textbf{Requirement Name}} & \multicolumn{1}{m{16em}|}{\textbf{Requirement}} & \multicolumn{1}{m{8em}|}{\textbf{Classification}} \\ \hline
+		\endhead
+		
+		\hline \multicolumn{4}{|m{36em}|}{Continued on next page} \\ \hline
+		\endfoot
+		
+		\hline \hline
+		\endlastfoot
+		
+		Q01 & Sensor Processing Latency & The system shall process sensor data in real-time with latency under 50 ms to ensure timely decision-making and control. & Must have \\
+		\hline
+		Q02 & Control Loop Frequency & The vehicle shall maintain a control loop update frequency of 20-30 Hz to ensure smooth and responsive driving at max. 15 km/h. & Must have \\
+		\hline
+		Q03 & Localization Accuracy & The localization system shall maintain its position estimation with an accuracy \(\pm 10\) cm to ensure the vehicle stays within the track boundaries. & Should have \\
+		\hline
+		Q04 & Perception Radius & The perception system shall detect cones at least 10 meters ahead to provide sufficient time for path adjustments. & Must have \\
+		\hline
+		Q05 & Emergency Braking Distance & The vehicle shall decelerate within 2-3 meters when the emergency braking system is engaged to ensure safe stopping. & Must have \\
+		\hline
+		Q06 & Emergency Stop & The vehicle shall engage the emergency braking system within 100 ms of detecting critical system failures to avoid accidents. & Should have \\
+		\hline
+		Q07 & Detection Rate & The perception system shall maintain a continuous detection rate of at least 95\% for cones to prevent boundary violations. & Must have \\
+		\hline
+		Q08 & Detection \& Classification Range & The system shall detect and classify blue cones marking the left track boundary and yellow cones marking the right track boundary in real-time within a range of at least 2 m. & Must have \\
+		\hline
+		Q9 & Control System & The control system shall operate continuously for the duration of the race without any system crashes or interruptions. & Should have \\
+		\hline
+		Q10 & Fallback & The vehicle shall recover from sensor or communication failures within 200 ms using fallback systems to ensure continuous operation. & Could have \\
+		\hline
+		Q11 & Logs & The system shall log sensor and control data with timestamps for a post-race analysis without exceeding storage limits. & Should have \\
+		\hline
+		Q12 & Hardware Temperature & The compute hardware shall maintain stable operation within a temperature range of 0-50°C to prevent overheating or shutdowns. & Could have \\
+		\hline
+		Q13 & Real-Time Data & The system shall provide real-time telemetry data to the race team at least once every 100 ms to allow for remote monitoring during the race. & Should have \\
+		\hline
+		Q14 & Reconfiguration \& Updates & The system shall support easy reconfiguration and updates of perception and control algorithms without requiring major code overhauls. & Could have \\
+		\hline
+		Q15 & Diagnostics & The user interface shall allow for quick diagnostic checks of system health before and during the race to facilitate rapid troubleshooting. & Could have \\
+		\hline
+		Q16 & Real-Time Internal Communication & The system shall support reliable, low-latency communication between sensor nodes, perception nodes, and control nodes to ensure real-time response. & Must have \\
+		\hline
+		Q17 & Energy Consumption & The software stack should optimize CPU and GPU usage to minimize energy consumption during intensive tasks like real-time perception and path planning. & Should have \\
+		\hline
+		Q18 & Sensor Efficiency & The vehicle shall use its sensors efficiently, ensuring that data redundancy is minimized, and sensor processing loads are balances to avoid system bottlenecks. & Must have \\
+		\hline
+		Q19 & Data Filtering & The system should implement intelligent data filtering to reduce unnecessary sensor data while preserving critical information needed for accurate perception and planning. & Must have \\
+		\hline
+		Q20 & Trajectory Updates & The path planning system shall generate new trajectories within a strict time frame/ every 50 ms to adapt to changes in the environment, avoiding delays that could cause the vehicle to miss turns. & Must have 
+	\end{longtable}
+\end{center}
+
+
+\subsection{Constraints}
+
+The constraints are defined by the limitations of the hardware and the rules of the Formula Student Driverless. They limit our solution space in order to yield a feasible solution in the end.
+
+\begin{center}
+	\begin{longtable}{ | m{2em} | m{10em} | m{16em} | m{8em} | }
+		\caption{Constraints.} \label{tab:long}\\
+		
+		\hline \multicolumn{1}{|m{2em}|}{\textbf{ID}} & \multicolumn{1}{m{10em}|}{\textbf{Requirement Name}} & \multicolumn{1}{m{16em}|}{\textbf{Requirement}} & \multicolumn{1}{m{8em}|}{\textbf{Classification}} \\ \hline
+		\endfirsthead
+		
+		\multicolumn{4}{m{36em}}%
+		{{\bfseries \tablename\ \thetable{} -- continued from previous page}} \\
+		\hline \multicolumn{1}{|m{2em}|}{\textbf{ID}} & \multicolumn{1}{m{10em}|}{\textbf{Requirement Name}} & \multicolumn{1}{m{16em}|}{\textbf{Requirement}} & \multicolumn{1}{m{8em}|}{\textbf{Classification}} \\ \hline
+		\endhead
+		
+		\hline \multicolumn{4}{|m{36em}|}{Continued on next page} \\ \hline
+		\endfoot
+		
+		\hline \hline
+		\endlastfoot
+		
+		C01 & Speed Limit & The vehicle shall not exceed a speed of 15 km/h due to track limitations and safety considerations. & Must have \\
+		\hline
+		C02 & Jetson Limitations & The system shall operate within the limitations of the NVIDIA Jetson NX ensuring all processes can run in real-time without overloading the CPU, GPU, and memory resources. & Must have \\
+		\hline
+		C03 & Real-Time Performance & The system shall process sensor inputs at 20-30Hz to maintain real-time performance within the computational limits of the vehicle. & Should have \\
+		\hline
+		C04 & Remote Emergency Stop & The vehicle shall include a Remote Emergency Stop system that can be triggered by the race team/ race officials at any time during the race. & Should have \\
+		\hline
+		C05 & System Monitoring & The autonomous system shall continuously monitor critical safety components and transition to a safe state if a failure is detected. & Should have \\
+		\hline
+		C06 & Power Budget & The sensor suite shall operate within a power budget, ensuring no component exceeds the power capacity available to the vehicle. & Should have \\
+		\hline
+		C07 & Ackerman Steering & The vehicle shall use the Ackerman steering system for turning, which constrains the types of maneuvers the vehicle can perform, preventing mechanical failure or loss of control, especially at high speeds. & Must have \\
+		\hline
+		C08 & On Track Testing & Vehicle testing on track shall be done within the practice tracks provided. & Should have \\
+		\hline
+		C09 & Processor Limitations & Algorithms for perception, planning, and control shall be designed to avoid overloading the processor, ensuring real-time performance without exceeding the power and thermal limits of the hardware. & Must have \\
+		\hline
+		C10 & 4-Wheel Drive & The vehicle's control system shall optimize the distribution of torque across all four wheels in a manner that ensures both optimal acceleration and stability, without causing skidding or loss of traction. & Should have \\
+		\hline
+		C11 & Energy Consumption & The vehicle's energy consumption shall be managed to ensure that it can complete the entire race or testing session within the available battery capacity, taking into account the energy demands of high-speed racing and intensive computations. & Must have \\
+		\hline
+		C12 & Data Prioritization & The system shall ensure that critical sensor data is prioritized in high-speed scenarios, where rapid decision-making is essential. & Should have \\
+		\hline
+		
+	\end{longtable}
+\end{center}
+
+

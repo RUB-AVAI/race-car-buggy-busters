@@ -1,0 +1,83 @@
+\documentclass[a4paper,11pt]{article}
+\usepackage{a4wide,graphicx,amsmath,amssymb,amsthm, algpseudocode, algorithm}
+\usepackage[ruled, noline, algo2e, noend]{algorithm2e}
+\usepackage{enumitem}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{hyperref,url,color}
+%\urlstyle{rm}
+
+%----------------------- Macros and Definitions --------------------------
+
+\newcommand{\N}{\ensuremath{\mathbb{N}}}
+\newcommand{\R}{\ensuremath{\mathbb{R}}}
+\newcommand{\Z}{\ensuremath{\mathbb{Z}}}
+\newcommand{\M}{\ensuremath{\mathcal{M}}}
+
+\graphicspath{{./images/}}
+
+%-------------------------------- Title ----------------------------------
+
+\title{Report Autonomous Vehicles and AI\\[1ex]
+%
+\large Autonomous Vehicles and Artificial Intelligence Lab}
+
+\author{
+    K. L. \\
+    \and
+    N. O. \\
+    \and
+    J. D. \\
+    \and
+    A. A.
+}
+\date{\today}
+
+%--------------------------------- Text ----------------------------------
+
+\begin{document}
+\maketitle
+\newpage
+\tableofcontents
+\newpage
+
+\section{Introduction}
+
+The F1Tenth car platform is a project for a small model race car and implements basic functionality like driving and steering. 
+It also already comes with all the nodes required to fetch and publish sensor and transform data.\\
+\newline
+The developers provide manuals to build the hardware of the car platform and a software stack to interact with the basic components like steering, acceleration and the sensors. All of this is already implemented by the university staff and the interface is documented on the GitHub Repository of the F110 team.
+In order to make it available in Gazebo Fortress we needed to implement an SDF file that implements the F110 standard in order for the simulation to be as close as possible to the real-world car platform.
+The F110 car platform comes a 4-wheel drive, steering, IMU sensor, depth camera, RGB-camera and a LiDAR sensor.
+
+\section{Expectations}
+\input{expectation}
+
+\section{Architecture}
+\input{architecture.tex}
+
+\section{Simulation}
+\input{simulation.tex}
+
+\section{Implementation}
+\input{implementation.tex}
+
+\section{Tests}
+\input{tests.tex}
+
+\section{Challenges}
+\input{challenges.tex}
+
+\section{Outcomes}
+\input{outcomes.tex}
+
+\section{Reflection}
+\input{reflection.tex}
+% Here we could come back to the expectations and discuss why we did not do some parts
+
+\newpage
+
+\bibliographystyle{alpha}
+\bibliography{bibliography}
+
+\end{document}

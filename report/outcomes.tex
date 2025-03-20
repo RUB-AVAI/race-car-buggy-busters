@@ -1,0 +1,50 @@
+
+Following for implementation and after facing the challenges, we have a race car that can drive autonomously in simulation \href{https://www.youtube.com/watch?v=qzKs0KKohVE&ab_channel=Ossmos}{(watch this video)}. In the real world setting, we are still facing issues with the perception, since the car still cannot reliably classify cones by the color. This makes it impossible for the car to successfully maneuver in turns as soon as there are cones of one color (blue or yellow) missing for the calculation of the next target point. \\ \newline
+Based on the dependencies between requirements and an initial prioritization  only a subset of the requirements was fulfilled. These requirements include F01 - F04, F06, F09 - F11, F14 - F16, F20 - F23, F28, F31, F34. Q11, Q16, Q19, C01, C02, and C07 - C11. Still, there are some requirements that were realized in a way that we did not initially plan for it. These include F14, where the vehicle stops driving since it is uncertain of the next target point because of missing cone classifications. Yet, in our current implementation, we do not check whether the car is still on the track or not. For Q19 we filter the data during our sensor fusion and cluster detection, rejecting clusters, that do not fit the dimensions of a cone. Finally, while the vehicle was tested on track as described in C08 and F34, those tests were not successful. \\
+\newline
+During development our understanding of the stack and our solution space has changed, which also yields a change in requirements. The following table displays the subset of the changed requirements which in this form can be considered as done. \\
+
+\begin{center}
+	\begin{longtable}{ | m{2em} | m{10em} | m{16em} | m{8em} | }
+		\caption{Changed Requirements.} \label{tab:long}\\
+		
+		\hline \multicolumn{1}{|m{2em}|}{\textbf{ID}} & \multicolumn{1}{m{10em}|}{\textbf{Requirement Name}} & \multicolumn{1}{m{16em}|}{\textbf{Requirement}} & \multicolumn{1}{m{8em}|}{\textbf{Classification}} \\ \hline
+		\endfirsthead
+		
+		\multicolumn{4}{m{36em}}%
+		{{\bfseries \tablename\ \thetable{} -- continued from previous page}} \\
+		\hline \multicolumn{1}{|m{2em}|}{\textbf{ID}} & \multicolumn{1}{m{10em}|}{\textbf{Requirement Name}} & \multicolumn{1}{m{16em}|}{\textbf{Requirement}} & \multicolumn{1}{m{8em}|}{\textbf{Classification}} \\ \hline
+		\endhead
+		
+		\hline \multicolumn{4}{|m{36em}|}{Continued on next page} \\ \hline
+		\endfoot
+		
+		\hline \hline
+		\endlastfoot
+		
+		F08* & Self-Localization & The vehicle shall localize itself relative to a map using fused data from LiDAR, camera, and odometry. & Must have \\ \hline
+		F12* & Path Planning & The vehicle shall employ a path planning algorithm that plans a static path after an exploration lap. & Must have \\ \hline
+		Q02* & Control Loop Frequency & The vehicle shall maintain a control loop update frequency of ca. 5 HZ to ensure smooth and responsive at ca. 1 m/s. & Must have \\ \hline
+		Q04* & Perception Radius & The perception system shall detect cones within the range of the sensor overlap (LiDAR and camera) to provide sufficient time for target point calculations. & Must have \\ \hline
+		C03* & Real-Time Performance & The system shall process sensor inputs at ca. 5 Hz to maintain real-time performance within the computational limits of the vehicle. & Must have \\ \hline
+		C04* & Remote Emergency Stop & The vehicle shall include a Remote Emergency Stop that can be triggered by the race team at any time. & Must have
+	\end{longtable}
+\end{center}
+
+Lastly, there are still requirements left, that were not (fully) fulfilled since they were outside our time scope, became obsolete due to our approach, or are currently technically unfulfillable.
+\begin{itemize}
+	\item F05: As we calculate the target point in our exploration phase as the midpoint between the closest blue and yellow cones in driving distance, we assume that we stay within track boundaries with this approach and the continuous estimation of the distance to the track boundaries becomes obsolete.
+	\item F13, Q20: This is obsolete since the track layout doesn't change during race and path planning only happens after track is fully explored. 
+	\item F17: For our speeds it is not quite necessary to adapt the acceleration with regards of factors like friction, currently the acceleration is adjusted by distance to next target point and the maximum speed is managed with an adjustable parameter.
+	\item F18: The handling is not yet implemented as it is not needed at low speeds (at least in simulation).
+	\item F19: The smooth acceleration not really possible with the current acceleration mode of car at low speeds. The acceleration is per default jerky at low speeds.
+	\item F24: We did not focus on smooth steering exclusively since at current maximum speeds of around 1 m/s the steering did not require any improvement in that regard.
+	\item F25, F32, Q06, C12: Currently we handle emergency stops and breaking by manually killing the nodes. There is yet no behavior implemented for detecting and handling emergency situations. For these reasons an override mode for emergency cases seems obsolete.
+	\item F26, F27, F29, F30, F33, Q09, Q10, Q12, Q13, C05, C06, C12: Currently nodes can crash independently. Since our nodes are dependent on the messages from other nodes which are handled in callbacks and a crashed node does not send messages, at some point the vehicle will stop driving as it is not receiving any new target point. With the current connection it is not possible to retrieve any system health data, as it will just overload the connection. Still, there are logs for nodes and it is detectable when a node runs into an error and crashes. One still might investigate into an autonomous restart of a node after node failure.
+	\item Q01: Similarly to the system health the latency of the sensor processing cannot be tracked in current state.
+	\item Q03: Currently, we have found no way to validate the localization accuracy.
+	\item Q08: Currently, we cannot determine a certain threshold at which cones must be classified. Additionally, the classification range varies between simulation and real world.
+	\item Q14: At the current state, the perception algorithms do not have ROS2 parameters. It is still to evaluate which benefit a reconfiguration of algorithmic parameters during runtime would yield in contrast to restarting the node (stack) entirely with changed parameters.
+	\item Q17: During our implementation, we did not run into any energy consumption problems that would require acute improvements.
+	\item Q18: While setting the sensor frequency or the frequency of callbacks does not happen autonomously, we have set these frequencies accordingly for our current maximum speed.
+\end{itemize}

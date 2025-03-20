@@ -1,0 +1,12 @@
+Looking back on the expectations to this project and the faced challenges during development, it is clear that not every requirement could be fulfilled with the given time constraints. While the racecar is able to execute basic autonomous driving tasks like cone detection and classification, self-localization, path planning, and map generation, some requirements were not realized.\\
+\newline
+These requirements were for example the emergency braking, failsafe mode, or the health monitoring. These were partially not implemented due to a lower priority. While the racecar does not register driving failures like leaving the track by itself, quitting the nodes does result in an immediate stop since the racecar does not receive any more drive messages. This resulted in the emergency stop to be obsolete for the current state. Due to the time constraints there is no guarantee on the quality requirements. \\
+\newline
+In further development, one could review the existing requirements - especially under the factor of actually achieved top speeds during the race - and adjust them. The optional requirements that were not fulfilled could be reviewed under the point on necessity and implemented given a prioritization. \\
+\newline
+For the next iteration of the course, several key improvements could enhance the learning experience and the performance of the autonomous vehicle. First, providing more structured guidance on handling ROS2 and debugging techniques is expected to facilitate participants in overcoming technical hurdles in a more efficient way.
+Additionally, improving the internet connection to the car by implementing a more resilient WiFi network will ensure smoother data transfer and reduce connection drops, which currently hinder real-time operation.\\ 
+\newline
+From a performance perspective, the refinement of the vehicle's driving capabilities at lower speeds with finer acceleration control will improve maneuverability and precision. 
+Furthermore, upgrading the camera to a model with a wider field of view of at least 120° and repositioning it centrally rather than its current left-leaning placement will enhance perception and environmental awareness. 
+Finally, the consideration of a Raspberry Pi-based vehicle as an alternative platform has the potential to offer a cost-effective solution while retaining the essential functionalities of the system.
