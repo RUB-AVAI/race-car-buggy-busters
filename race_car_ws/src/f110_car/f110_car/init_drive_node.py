@@ -1,17 +1,9 @@
 #!/usr/bin/env python3
-import math
 import rclpy
 from rclpy.node import Node
-from rclpy.parameter import Parameter
-from rcl_interfaces.msg import SetParametersResult
-
-import numpy as np
-
-from avai_lab.utils import get_direction_vec, quat_to_rot_vec, rot_from_vec
 # from avai_lab.config import load_config
 
 from ackermann_msgs.msg import AckermannDriveStamped
-from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped
 
 class InitDrive(Node):
     """

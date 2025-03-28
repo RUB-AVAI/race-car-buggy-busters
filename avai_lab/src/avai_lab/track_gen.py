@@ -5,14 +5,7 @@ from shapely.ops import polygonize
 from shapely.geometry import MultiLineString, Polygon
 from shapely import unary_union, affinity
 from scipy.spatial import Delaunay
-
-def is_right(a: np.ndarray, b: np.ndarray, c: np.ndarray):
-    """
-    Note that the line is directional!
-    If the line goes from b to a, the answer will be the inverse of the
-    line going from a to b.
-    """
-    return ((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])) > 0
+from avai_lab.utils import is_right
 
 def graham_scan(X: np.ndarray):
     """Graham scan separates the problem into the lower/upper convex hull
